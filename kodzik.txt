@@ -1,0 +1,353 @@
+
+#include <Wire.h>  
+
+#include <LiquidCrystal_I2C.h>
+
+#include <Keypad.h>
+
+LiquidCrystal_I2C lcd(0x3F, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);  
+
+//argumenty
+
+#define czerwona1 8
+#define czerwona2 5
+#define czerwona3 A1
+#define zielona1 7
+#define zielona2 4
+#define zielona3 A2
+#define niebieska1 6
+#define niebieska2 3
+#define niebieska3 A3
+
+#define WIERSZ0 9
+#define WIERSZ1 10
+#define WIERSZ2 11
+#define WIERSZ3 12
+#define KOLUMNA0 13
+#define KOLUMNA1 A0
+#define KOLUMNA2 2
+
+const byte WIERSZE = 4;
+const byte KOLUMNY = 3;
+
+char klawisze[WIERSZE][KOLUMNY] = {
+{'1','2','3'},
+{'4','5','6'},
+{'7','8','9'},
+{'k','0','='}};
+
+byte wierszePiny[WIERSZE] = {WIERSZ0,WIERSZ1,WIERSZ2,WIERSZ3};
+byte kolumnyPiny[KOLUMNY] = {KOLUMNA0,KOLUMNA1,KOLUMNA2};
+
+Keypad KPD = Keypad( makeKeymap(klawisze), wierszePiny, kolumnyPiny, WIERSZE, KOLUMNY );
+boolean valOnePresent = false;
+boolean next = false;
+boolean final = false;
+String num1, num2;
+long int num3;
+long int ans;
+char op;
+long int key1;
+char oper;
+
+void setup()   
+{
+  Serial.begin(9600);  
+
+pinMode(czerwona1,OUTPUT);
+pinMode(czerwona2,OUTPUT);
+pinMode(czerwona3,OUTPUT);
+pinMode(zielona1,OUTPUT);
+pinMode(zielona2,OUTPUT);
+pinMode(zielona3,OUTPUT);
+pinMode(niebieska1,OUTPUT);
+pinMode(niebieska2,OUTPUT);
+pinMode(niebieska3,OUTPUT);
+
+  lcd.begin(16,2);  
+
+// ------- 3 swiatelka na start (for fun)  -------------
+  for(int i = 0; i< 3; i++)
+  {
+    lcd.backlight();
+    delay(250);
+    lcd.noBacklight();
+    delay(250);
+  }
+// ------- podswietlenie ON -------------
+
+  lcd.backlight(); 
+                  
+  lcd.setCursor(0,0); 
+  lcd.print("Kalkulator");
+  lcd.backlight();               
+  delay(1000);
+  lcd.setCursor(0,1);
+  lcd.print("Rezystancji");
+  lcd.backlight();               
+  delay(4000);  
+
+  lcd.clear();
+  lcd.setCursor(0,0); 
+  lcd.print("Podaj w Ohmach:");
+  for(int wiersz = 0; wiersz < WIERSZE;wiersz++)
+{
+pinMode(wierszePiny[wiersz],INPUT);
+digitalWrite(wierszePiny[wiersz],HIGH);
+}
+for (int kolumna = 0; kolumna < KOLUMNY;kolumna++)
+{
+pinMode(kolumnyPiny[kolumna],OUTPUT);
+digitalWrite(kolumnyPiny[kolumna],HIGH);
+}  
+  lcd.setCursor(0,1);
+
+  lcd.backlight();               
+ 
+}
+void loop()
+{
+  char key = getKey(); 
+
+  if ((key=='1'||key=='2'||key=='3'||key=='4'||key=='5'||key=='6'||key=='7'||key=='8'||key=='9'||key=='0')){
+    if (valOnePresent != true){
+      num1 = num1 + key;      
+      int numLength1 = num1.length();
+      lcd.backlight();
+      lcd.setCursor(0, 1); 
+      lcd.print(num1);
+
+    }
+  } 
+
+   if (key == '='){
+      ans = num1.toInt();    
+      lcd.clear();
+      lcd.backlight();
+      lcd.setCursor(0,0);
+      lcd.print("Rezystancja:");
+      lcd.backlight();
+      lcd.setCursor(0,1);
+      lcd.print(ans);
+  }
+  
+   if (key == 'k') {
+   lcd.clear();
+  lcd.backlight();
+ lcd.print("Podaj w ohmach");
+lcd.backlight();
+ans=0;
+num1="";
+lcd.setCursor(0,1);
+  }
+int tempNumber = ans;
+int b = 0;
+
+while(tempNumber>0) {
+  tempNumber=tempNumber/10;
+  b++; }
+int liczeu = ans;
+int ileCyfr = b;
+if(ileCyfr==1) {
+kolorDioda1(ans);
+dioda2(LOW,LOW,LOW);
+dioda3(LOW,LOW,LOW);
+}
+
+else if(ileCyfr==2) {
+int first = liczeu / 10 % 10;  
+int second = liczeu % 10;
+kolorDioda1(first);
+dioda2(HIGH,0,0);
+kolorDioda2(second);
+dioda3(LOW,LOW,LOW);
+
+}
+else if(ileCyfr==3) {
+int first = liczeu / 100 % 10;
+int second = liczeu / 10 % 10;
+kolorDioda1(first);
+kolorDioda2(second);
+dioda3(LOW,HIGH,HIGH);
+dioda3(0,150,150);
+}
+
+else if(ileCyfr==4) {
+int first = liczeu / 1000;
+int second = liczeu / 100 % 10;
+kolorDioda1(first);
+kolorDioda2(second);
+dioda3(HIGH,HIGH,HIGH);
+kolorDioda3(2);
+}
+
+else if(ileCyfr>4) {
+dioda1(LOW,LOW,LOW);
+dioda2(LOW,LOW,LOW);
+dioda3(LOW,LOW,LOW);
+      lcd.backlight();
+      lcd.setCursor(0,0);
+      lcd.print("Max = 9999");
+      lcd.backlight();
+      lcd.setCursor(0,1);
+      lcd.print("Restartuj");
+      delay(100);
+      kolorDioda3(0);
+}
+dioda1(LOW,LOW,LOW);
+dioda2(LOW,LOW,LOW);
+dioda3(LOW,LOW,LOW);
+}
+
+char getKey()
+{
+  char key = 0; 
+  for(int kolumna = 0; kolumna < KOLUMNY; kolumna++)
+  {
+    digitalWrite(kolumnyPiny[kolumna],LOW); 
+    for(int wiersz = 0; wiersz < WIERSZE; wiersz++) 
+
+    {
+      if(digitalRead(wierszePiny[wiersz]) == LOW) 
+      {
+        delay(1000); 
+        while(digitalRead(wierszePiny[wiersz]) == LOW)
+          ; 
+          key = klawisze[wiersz][kolumna]; 
+      }
+    }
+    digitalWrite(kolumnyPiny[kolumna],HIGH); 
+  }
+  return key; 
+}
+
+
+void kolorDioda1(int color){
+ 
+  switch (color) {
+    case 0 : //black
+    dioda1(0,0,0);
+    break ;
+    case 1 :   //brown
+    dioda1(180,15,0);
+    break ;
+    case 2 :  //red
+    dioda1(255,0,0);
+    break ;
+    case 3 :   //orange
+    dioda1(255,31,0);
+    break ;
+    case 4 :   //yellow
+    dioda1(145,24,0);
+    break ;
+    case 5 :   //green
+    dioda1(0,255,0);
+    break ;
+    case 6 :  //blue
+    dioda1(0,0,255);
+    break ;
+    case 7 :    //violet
+    dioda1(204,0,53);
+    break ;
+    case 8 :    //gray
+    dioda1(204,100,80);
+    break ;
+    case 9 :   //white 
+    dioda1(240,190,100);
+    break ;  
+ } 
+}
+
+void kolorDioda2(int color){
+ 
+  switch (color) {
+    case 0 : //black
+    dioda2(0,0,0);
+    break ;
+    case 1 :   //brown
+    dioda2(180,15,0);
+    break ;
+    case 2 :  //red
+    dioda2(255,0,0);
+    break ;
+    case 3 :   //orange
+    dioda2(255,31,0);
+    break ;
+    case 4 :   //yellow
+    dioda2(145,24,0);
+    break ;
+    case 5 :   //green
+    dioda2(0,255,0);
+    break ;
+    case 6 :  //blue
+    dioda2(0,0,255);
+    break ;
+    case 7 :    //violet
+    dioda2(204,0,53);
+    break ;
+    case 8 :    //gray
+    dioda2(204,100,80);
+    break ;
+    case 9 :   //white 
+    dioda2(240,190,100);
+    break ;  
+ } 
+}
+
+void kolorDioda3(int color){
+ 
+  switch (color) {
+    case 0 : //black
+    dioda3(0,0,0);
+    break ;
+    case 1 :   //brown
+    dioda3(180,15,0);
+    break ;
+    case 2 :  //red
+    dioda3(255,0,0);
+    break ;
+    case 3 :   //orange
+    dioda3(255,31,0);
+    break ;
+    case 4 :   //yellow
+    dioda3(145,24,0);
+    break ;
+    case 5 :   //green
+    dioda3(0,255,0);
+    break ;
+    case 6 :  //blue
+    dioda3(0,0,255);
+    break ;
+    case 7 :    //violet
+    dioda3(204,0,53);
+    break ;
+    case 8 :    //gray
+    dioda3(204,100,80);
+    break ;
+    case 9 :   //white 
+    dioda3(240,190,100);
+    break ;  
+ } 
+}
+
+void dioda1(unsigned char red, unsigned char green, unsigned char blue) {
+
+digitalWrite(czerwona1,red);
+digitalWrite(zielona1,green);
+digitalWrite(niebieska1,blue);
+
+}
+void dioda2(unsigned char red, unsigned char green, unsigned char blue) {
+
+digitalWrite(czerwona2,red);
+digitalWrite(zielona2,green);
+digitalWrite(niebieska2,blue);
+
+}
+void dioda3(unsigned char red, unsigned char green, unsigned char blue) {
+
+analogWrite(czerwona3,red);
+analogWrite(zielona3,green);
+analogWrite(niebieska3,blue);
+
+}
